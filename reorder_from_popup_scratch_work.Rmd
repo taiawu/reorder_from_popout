@@ -1,0 +1,115 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+library(tidyverse)
+layout
+```
+
+sample data
+```{r}
+raw <- readRDS("input_data/sample_dsf_data.rds")  %>% filter(well %in% c("A1", "A2"))
+
+layout <- readRDS("input_data/sample_layout_file.rds") %>% filter(well %in% c("A1", "A2")) %>% mutate(protein = c("protein", "buffer"))
+
+get_orderable_cols <- function(df,
+                               conditional_function = is.numeric,
+                               drop_cols = c("well", "column", "row")){
+  
+filtered_out <- df[sapply(df, conditional_function)] %>% names(.)
+drop_cols <- c("well", "column", "row")
+drop_all <- c(drop_cols, filtered_out) # columns which we won't allow reordering of
+
+df %>% select(-all_of(drop_all)) %>% names(.)
+col_list 
+}
+
+# options for rank_list()
+orderable_cols <- get_orderable_cols(layout)
+
+# bool to activate the "order by" button
+selected_var %in% orderable_cols
+
+# pass this to rank_list
+layout[[selected_var]] %>% unique()
+
+# reorder after rank_list has been returned
+# layout
+
+wrap_by <- function(.wrap_by) {
+  facet_wrap(vars(!!wrap_by), labeller = label_both)
+}
+
+test_plot <- function(df, .wrap_by, .lines_by) {
+  wrap_by  <- enquo(.wrap_by)
+  lines_by <- enquo(.lines_by)
+  df %>%
+    ggplot(aes(x = Temperature, y = value_norm, group = well, linetype = !!lines_by)) +
+    geom_line() +
+    facet_wrap(vars(!!wrap_by))
+}
+```
+
+
+```{r}
+refactor_list <- list() # initialize the list
+selected_var1 <- "dye"
+selected_var2 <- "protein"
+
+refactor_list[[selected_var1]] <- layout[[selected_var1]] %>% unique() # result from sortable
+refactor_list[[selected_var2]] <- layout[[selected_var2]] %>% unique() # result from sortable
+
+ordered_layout <- layout %>% mutate(across(all_of(names(refactor_list)), ~ factor(.x, levels = refactor_list[[cur_column()]])))
+
+df_labeled <- right_join(raw, ordered_layout, by = "well") 
+
+test_plot(df_labeled, dye, dye)
+
+refactor_list[[selected_var1]] <- layout[[selected_var1]] %>% unique() %>% rev() # result from sortable
+refactor_list[[selected_var2]] <- layout[[selected_var2]] %>% unique() %>% rev()# result from sortable
+
+ordered_layout <- layout %>% mutate(across(all_of(names(refactor_list)), ~ factor(.x, levels = refactor_list[[cur_column()]])))
+
+df_labeled <- right_join(raw, ordered_layout, by = "well") 
+
+test_plot(df_labeled, dye, dye)
+```
+
+Task: given a list of columns to reorder, reorder all of them
+```{r}
+flying_refactor <- function(x) {
+  # print(cur_column(x))
+  # # refactor_list[[cur_column(x)]]
+  # # print(x)
+  # as.factor(x)
+  cur_column()
+}
+
+refactor_names <- refactor_list %>% names()
+
+layout %>% mutate(across(names(refactor_list), cur_column))
+
+
+layout %>% mutate(across("dye")) #, as.character)
+
+
+df <- tibble(x = 1:3, y = 3:5, z = 5:7)
+mult <- list(x = 1, y = 10, z = 100)
+
+df %>% mutate(across(all_of(names(mult)), ~ .x * mult[[cur_column()]]))
+
+df %>% mutate(across(all_of(names(refactor_list)), ~ .x * mult[[cur_column()]]))
+# factor(df[[selected_var]],  levels = user_ordered)  
+
+
+```
+
+
+```{r}
+starwars %>% 
+  summarise(across(where(is.character), n_distinct))
+
+```
+
+
